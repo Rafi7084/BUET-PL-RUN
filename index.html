@@ -181,7 +181,8 @@ button:focus-visible{outline:4px solid var(--gold);outline-offset:3px}
         <li>“মাশাআল্লাহ! চাপ খেয়ে আসি চল!” — এই বন্ধুর ফাঁদেও পা দিও না।</li>
         <li>টিউশনের লোভে পড়াশোনা ছেড়ে দিও না।</li>
         <li>গার্লফ্রেন্ডের আইকন এড়িয়ে চলো।</li>
-        <li>কোনো বন্ধুর সঙ্গে বা গার্লফ্রেন্ডের আইকনের সঙ্গে ধাক্কা লাগলে GAME OVER!</li>
+        <li>“কনসার্টে যাবি?” — মিউজিক আইকনের ডাকে সাড়া দিও না।</li>
+        <li>কোনো বন্ধু, গার্লফ্রেন্ড বা কনসার্টের আইকনের সঙ্গে ধাক্কা লাগলে GAME OVER!</li>
         <li>PL শেষ হওয়ার আগেই সিলেবাসের ১০০% শেষ করো।</li>
       </ol>
       <div class="acts"><button id="hBack" class="small">পিছনে</button><button id="hStart" class="big">গেম শুরু করো ▶</button></div>
@@ -230,7 +231,7 @@ const stage=$('stage'), cv=$('cv'), ctx=cv.getContext('2d');
 let SC=1;
 
 /* Paste recorded Bangla voice lines here as data: URIs (e.g. data:audio/mpeg;base64,...) to replace text-to-speech. */
-const CLIPS={bukhari:'',mash:'',tuition:'',girl:'',intro:''};
+const CLIPS={bukhari:'',mash:'',tuition:'',girl:'',concert:'',intro:''};
 
 /* ================= utils ================= */
 const clamp=(v,a,b)=>v<a?a:v>b?b:v, lerp=(a,b,t)=>a+(b-a)*t, rand=(a,b)=>a+Math.random()*(b-a), mod=(a,b)=>((a%b)+b)%b;
@@ -315,7 +316,9 @@ const SFX={
   over(){[392,349,311,262].forEach((f,i)=>tone(f,0.3,{vol:0.12,when:now()+i*0.22}));},
   win(){[523,659,784,1047,784,1047,1319].forEach((f,i)=>tone(f,0.24,{vol:0.12,when:now()+i*0.11}));},
   bell(){for(let i=0;i<7;i++)tone(1400,0.11,{vol:0.07,when:now()+i*0.13});},
-  sting(){[740,698,622,523].forEach((f,i)=>tone(f,0.26,{type:'sawtooth',vol:0.1,when:now()+i*0.12}));}
+  sting(){[740,698,622,523].forEach((f,i)=>tone(f,0.26,{type:'sawtooth',vol:0.1,when:now()+i*0.12}));},
+  riff(){[330,392,440,494,587].forEach((f,i)=>tone(f,0.14,{type:'sawtooth',vol:0.09,when:now()+i*0.07}));},
+  cheer(){noise(0.6,{vol:0.1,freq:1400,q:0.4});noise(0.4,{vol:0.06,freq:2600,q:0.6,when:now()+0.1});}
 };
 const MUS={mode:'none',next:0,step:0};
 const mtof=m=>440*Math.pow(2,(m-69)/12);
@@ -345,10 +348,10 @@ function ambience(on){if(!AU.ctx)return;const c=AU.ctx;
   else if(!on&&AU.amb){const a=AU.amb;AU.amb=null;a.g.gain.setTargetAtTime(0.0001,c.currentTime,0.08);setTimeout(()=>{try{a.s.stop();a.lfo.stop();}catch(e){}},500);}}
 
 /* ================= voice ================= */
-const LINES={bukhari:'দোস্ত, চল বুখারী চাপ খেয়ে আসি!',mash:'মাশাআল্লাহ! চাপ খেয়ে আসি চল!',tuition:'দোস্ত, টিউশনে চল! টাকা কামাবি!',girl:'কই তুমি? দেখা করবা না?',
+const LINES={concert:'দোস্ত, কনসার্টে যাবি? আজকে রাতে শো!',bukhari:'দোস্ত, চল বুখারী চাপ খেয়ে আসি!',mash:'মাশাআল্লাহ! চাপ খেয়ে আসি চল!',tuition:'দোস্ত, টিউশনে চল! টাকা কামাবি!',girl:'কই তুমি? দেখা করবা না?',
   intro:'কালকে Term Final! আর আমার syllabus শেষ হয় নাই!'};
-const REPLY={bukhari:'চল দোস্ত! খিদা লাগছে!',mash:'মাশাআল্লাহ! চল চল!',tuition:'টাকা?! চল যাই!',girl:'আসতেছি! ❤'};
-const PITCH={bukhari:0.8,mash:1.15,tuition:0.95,girl:1.6,intro:1.05};
+const REPLY={concert:'চল! আজকে গান, পরে পড়া!',bukhari:'চল দোস্ত! খিদা লাগছে!',mash:'মাশাআল্লাহ! চল চল!',tuition:'টাকা?! চল যাই!',girl:'আসতেছি! ❤'};
+const PITCH={concert:1.25,bukhari:0.8,mash:1.15,tuition:0.95,girl:1.6,intro:1.05};
 const VOICE={ok:'speechSynthesis' in window,v:null};
 function pickVoice(){if(!VOICE.ok)return;const vs=speechSynthesis.getVoices()||[];VOICE.v=vs.find(v=>/^bn[-_]BD/i.test(v.lang))||vs.find(v=>/^bn/i.test(v.lang))||null;}
 if(VOICE.ok){pickVoice();try{speechSynthesis.addEventListener('voiceschanged',pickVoice);}catch(e){speechSynthesis.onvoiceschanged=pickVoice;}}
@@ -546,6 +549,42 @@ function drawGirlIcon(x,y,r,t){
   ctx.restore();
 }
 
+/* ================= concert icon & scene ================= */
+function drawMusicIcon(x,y,r,t){
+  ctx.save();ctx.translate(x,y);
+  const pr=r*(1.3+0.1*Math.sin(t*6));const g=ctx.createRadialGradient(0,0,r*0.6,0,0,pr*1.2);g.addColorStop(0,'rgba(140,90,255,.5)');g.addColorStop(1,'rgba(140,90,255,0)');ctx.fillStyle=g;ctx.fillRect(-pr*1.3,-pr*1.3,pr*2.6,pr*2.6);
+  circ(0,0,r+3);ctx.lineWidth=3;ctx.strokeStyle=OUT;ctx.stroke();circ(0,0,r);ctx.fillStyle='#7b4dff';ctx.fill();
+  ctx.save();circ(0,0,r-4);ctx.clip();ctx.fillStyle='#efe6ff';ctx.fillRect(-r,-r,2*r,2*r);
+  const EQ=['#ff3d7f','#ffc93c','#2fd17a','#2e9bff','#ff7a1a'];
+  for(let i=0;i<5;i++){const h=r*(0.25+0.3*Math.abs(Math.sin(t*7+i*1.3)));ctx.fillStyle=EQ[i];ctx.fillRect(-r*0.75+i*r*0.31,r*0.95-h,r*0.24,h);}
+  ctx.restore();
+  ctx.save();ctx.rotate(Math.sin(t*4)*0.08);const nc='#2a1650';
+  ell(-r*0.3,r*0.28,r*0.2,r*0.15,-0.4);fs(nc,2);ell(r*0.32,r*0.14,r*0.2,r*0.15,-0.4);fs(nc,2);
+  ctx.fillStyle=nc;ctx.fillRect(-r*0.14,-r*0.5,r*0.09,r*0.78);ctx.fillRect(r*0.48,-r*0.64,r*0.09,r*0.78);
+  ctx.beginPath();ctx.moveTo(-r*0.14,-r*0.5);ctx.lineTo(r*0.57,-r*0.64);ctx.lineTo(r*0.57,-r*0.44);ctx.lineTo(-r*0.14,-r*0.3);ctx.closePath();ctx.fill();
+  ctx.restore();
+  ctx.save();ctx.translate(r*0.62,r*0.84);ctx.rotate(-0.15);rr(-r*0.42,-r*0.2,r*0.84,r*0.4,r*0.12);fs('#e01b24',2);txt('LIVE',0,1,Math.max(9,r*0.28),'#ffffff',{font:EN,weight:400});ctx.restore();
+  for(let i=0;i<2;i++){const a=t*2.2+i*Math.PI;txt('♪',Math.cos(a)*r*1.25,Math.sin(a)*r-r*0.2,r*0.5,'#ffc93c',{font:'Georgia,serif',weight:700,stroke:OUT,sw:3});}
+  ctx.restore();
+}
+function sceneConcert(mt){
+  const g=ctx.createLinearGradient(0,0,0,440);g.addColorStop(0,'#0e0b24');g.addColorStop(1,'#2a1046');ctx.fillStyle=g;ctx.fillRect(-30,-30,W+60,480);
+  const SP=['rgba(255,61,127,.2)','rgba(255,201,60,.18)','rgba(46,155,255,.2)','rgba(47,209,122,.18)'];
+  for(let i=0;i<4;i++){const x0=80+i*150,a=Math.sin(mt*1.3+i*1.7)*0.4,bx=x0+Math.tan(a)*440;ctx.beginPath();ctx.moveTo(x0-8,0);ctx.lineTo(x0+8,0);ctx.lineTo(bx+60,440);ctx.lineTo(bx-60,440);ctx.closePath();ctx.fillStyle=SP[i];ctx.fill();}
+  [[40,130],[510,130]].forEach(q=>{rr(q[0],q[1],70,130,6);fs('#1d1d24',3);const pl=1+0.08*Math.abs(Math.sin(mt*9));circ(q[0]+35,q[1]+40,18*pl);fs('#3a3a48',2.5);circ(q[0]+35,q[1]+95,24*pl);fs('#3a3a48',2.5);});
+  rr(240,40,300,52,10);fs('#ff3d7f',4);txt('ক্যাম্পাস কনসার্ট',390,66,28,'#ffffff');
+  rr(30,258,560,22,4);fs('#4a4a5a',3);rr(30,280,560,70,4);fs('#24242e',3);
+  drawPerson(Object.assign({},LOOK.s2,{x:250,y:262,s:0.72,face:1,gait:'stand',arms:'cheer',expr:'talk',t:mt*1.4}));
+  line(272,262,272,192,'#8a8a8a',3);circ(272,188,5);fs('#333333',2);
+  drawPerson(Object.assign({},LOOK.s3,{x:380,y:262,s:0.72,face:-1,gait:'stand',arms:'talkHands',expr:'happy',t:mt*2}));
+  for(let i=0;i<16;i++){const x=i*40+10,by=Math.abs(Math.sin(mt*6+i))*8;ctx.fillStyle='#120c22';circ(x,410-by,16);ctx.fill();rr(x-18,420-by,36,60,10);ctx.fill();
+    if(i%3===0){ctx.strokeStyle='#120c22';ctx.lineWidth=7;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(x+10,422-by);ctx.lineTo(x+20,370-by+Math.sin(mt*8+i)*6);ctx.stroke();}}
+  ctx.fillStyle='#1b1430';ctx.fillRect(-30,470,W+60,100);
+  const jy=Math.abs(Math.sin(mt*6))*20;shadow(300,jy);
+  drawPerson(Object.assign({},LOOK.player,{x:300,y:GROUND-jy,s:1,face:1,gait:jy>4?'jump':'stand',arms:'cheer',expr:'happy',t:mt}));
+  chip('গান নং '+toBn(1+Math.floor(mt/1.5))+' চলছে...',20,20);
+}
+
 /* ================= collectibles ================= */
 const BOOKC=['#2e7dd1','#d9442f','#2f9e57','#8a4fd1','#f29d1b'],LBL=['MATH','EEE','MECH','IPE','CHEM','PHY'],ITYPES=['book','lecture','hand','formula','pyq','summary'];
 function drawItem(it,t,noGlow){
@@ -706,7 +745,7 @@ let mode='gate',modeT=0,E=null,howtoSeen=false,tutDone=false,introSeen=false;
 const DODGE=['বাঁচলাম!','পরে দোস্ত!','সিলেবাস আগে!','আজকে না!','No thanks!'];
 const REACT=['ধুর!','ধ্যাৎ!','আচ্ছা যা!'];
 const MILES=[[25,'একটু একটু করে আগাচ্ছি!'],[50,'ভাই, অর্ধেক শেষ!'],[75,'আর একটু! এবার সিরিয়াস!'],[90,'শেষ মুহূর্ত! কোনো distraction না!'],[100,'SYLLABUS COMPLETE!']];
-const ENDS={bukhari:{cap:'“পেট ভরছে, syllabus খালি!”'},mash:{cap:'“মাশাআল্লাহ! PL গেল, চাপ খাওয়া হলো!”'},tuition:{cap:'“টাকা আসছে, syllabus আটকে!”'},
+const ENDS={concert:{cap:'“সুর উঠছে, syllabus ডুবছে!”'},bukhari:{cap:'“পেট ভরছে, syllabus খালি!”'},mash:{cap:'“মাশাআল্লাহ! PL গেল, চাপ খাওয়া হলো!”'},tuition:{cap:'“টাকা আসছে, syllabus আটকে!”'},
   girl:{cap:'“প্রেম জমছে, syllabus বাকি!”'},time:{pre:'“PL শেষ! Term Final শুরু!”',cap:'“সিলেবাস শেষ হয় নাই!”'}};
 
 function floater(x,y,s,c,size,font){G.fl.push({x,y,s,c,size:size||20,font:font||BN,life:1.1,max:1.1});}
@@ -716,9 +755,11 @@ function updParts(arr,dt){for(let i=arr.length-1;i>=0;i--){const q=arr[i];q.life
 function drawParts(arr){for(const q of arr){const a=clamp(q.life/q.max,0,1);ctx.globalAlpha=Math.min(1,a*1.5);
   switch(q.k){case 'spark':star(q.x,q.y,q.s,q.c);break;case 'dust':circ(q.x,q.y,q.s*(1.6-a));ctx.fillStyle='rgba(205,195,175,.75)';ctx.fill();break;
     case 'conf':ctx.save();ctx.translate(q.x,q.y);ctx.rotate(q.rot);ctx.fillStyle=q.c;ctx.fillRect(-4,-2.5,8,5);ctx.restore();break;
-    case 'heart':heart(q.x,q.y,q.s,'#ff4d7a',1.6);break;}}ctx.globalAlpha=1;}
+    case 'heart':heart(q.x,q.y,q.s,'#ff4d7a',1.6);break;
+    case 'note':txt(q.ch,q.x,q.y,q.s,q.c,{font:'Georgia,serif',weight:700,stroke:OUT,sw:4});break;}}ctx.globalAlpha=1;}
 function dust(x,y,n){for(let i=0;i<n;i++)G.parts.push({k:'dust',x:x+rand(-10,10),y:y-rand(0,6),vx:rand(-120,-40),vy:rand(-40,-5),life:0.5,max:0.5,s:rand(4,8)});}
 const CONFC=['#ff595e','#ffca3a','#8ac926','#1982c4','#6a4c93','#ffffff'];
+function noteP(x,y){return{k:'note',x:x+rand(-20,20),y,vx:rand(-30,30),vy:rand(-90,-50),life:1.4,max:1.4,s:rand(20,30),c:['#ffc93c','#ff3d7f','#b48cff','#2fd17a'][Math.random()*4|0],ch:Math.random()<0.5?'♪':'♫'};}
 function conf(x,y){return{k:'conf',x,y,vx:rand(-40,40),vy:rand(60,170),g:40,life:3,max:3,rot:rand(0,6),vr:rand(-7,7),c:CONFC[Math.random()*CONFC.length|0]};}
 function updAmbient(dt){const rate=lerp(0.35,3.2,G.p);if(Math.random()<rate*dt)G.amb.push({x:W+20,y:rand(70,370),vx:-G.speed*rand(0.45,0.85),ph:rand(0,6),rot:rand(0,6),vr:rand(-3,3),k:Math.random()<0.28?'clock':'paper'});
   for(let i=G.amb.length-1;i>=0;i--){const a=G.amb[i];a.x+=a.vx*dt;a.ph+=dt*3;a.y+=Math.sin(a.ph)*30*dt;a.rot+=a.vr*dt;if(a.x<-40)G.amb.splice(i,1);}}
@@ -754,29 +795,31 @@ function startRun(){
   hideAll();ambience(false);hush();E=null;mode='play';
   Object.assign(G,{t:0,p:0,speed:360,scroll:0,syl:0,timeLeft:PL_TOTAL,items:[],hz:[],fl:[],parts:[],amb:[],bag:[],lastKind:null,ms:{},shake:0,flash:0,hb:0,al:0,pulse:0,dodged:0,paused:false,resume:0});
   Object.assign(P,{x:200,y:GROUND,vy:0,on:true,buf:0,phase:0,stepIdx:0});
-  G.nextHz=1850;let pos=W+120;while(pos<W+1450){addGroup(pos);pos+=rand(640,900);}
+  G.nextHz=1850;let pos=W+120;while(pos<W+1450){addGroup(pos);pos+=rand(760,1050);}G.nextItemW=pos;
   hudEl.classList.add('show');jumpBtn.classList.add('show');
   G.tut=!tutDone;if(G.tut)tutEl.classList.add('show');
   setMusic('play');updateHUD(true);
 }
 function addGroup(x){
-  const p=G.p,r=Math.random(),n=1+(Math.random()<lerp(0.35,0.6,p)?1:0)+(Math.random()<0.15?1:0);
-  const type=r<0.45?'row':r<0.75?'high':'stairs';
+  const p=G.p,r=Math.random(),n=1+(Math.random()<lerp(0.3,0.5,p)?1:0)+(Math.random()<0.12?1:0);
+  const type=r<0.38?'row':r<0.72?'high':'stairs';
   for(let i=0;i<n;i++){let y;if(type==='row')y=GROUND-48;else if(type==='high')y=GROUND-205-(i%2)*25;else y=[GROUND-48,GROUND-200,GROUND-250][i];G.items.push(mkItem(x+i*58,y));}
 }
 function nextKind(){
-  if(!G.bag.length){G.bag=shuffle(['bukhari','mash','tuition','girl']);if(G.bag[G.bag.length-1]===G.lastKind){const tmp=G.bag[0];G.bag[0]=G.bag[G.bag.length-1];G.bag[G.bag.length-1]=tmp;}}
+  if(!G.bag.length){G.bag=shuffle(['bukhari','mash','tuition','girl','concert']);if(G.bag[G.bag.length-1]===G.lastKind){const tmp=G.bag[0];G.bag[0]=G.bag[G.bag.length-1];G.bag[G.bag.length-1]=tmp;}}
   const k=G.bag.pop();G.lastKind=k;return k;
 }
 function spawnHazard(){
   const p=G.p,k=nextKind(),x0=W+80;
-  if(k==='girl')G.hz.push({kind:k,x:x0,vx:0,hw:22,phase:Math.random()*6,spoke:false,passed:false,hit:false,react:0,rt:''});
+  if(isIcon(k))G.hz.push({kind:k,x:x0,vx:0,hw:22,phase:Math.random()*6,spoke:false,passed:false,hit:false,react:0,rt:''});
   else G.hz.push({kind:k,x:x0,vx:40+30*p,hw:20,top:GROUND-116,bot:GROUND,phase:Math.random()*6,spoke:false,passed:false,hit:false,react:0,rt:''});
-  const gap=lerp(1150,680,p)+Math.random()*lerp(650,320,p);G.nextHz=G.scroll+gap;
-  if(k==='girl'&&Math.random()<0.8){[-110,-55,0,55,110].forEach(dx=>G.items.push(mkItem(x0+dx,GROUND-75-110*(1-(dx/150)*(dx/150)))));}
-  let pos=x0+300;const end=x0+gap-240;while(pos<end-60){addGroup(pos);pos+=lerp(1200,720,p)+Math.random()*340;}
+  const gap=lerp(1050,620,p)+Math.random()*lerp(560,280,p);G.nextHz=G.scroll+gap;
+  if(isIcon(k)&&Math.random()<0.4){[-55,0,55].forEach(dx=>G.items.push(mkItem(x0+dx,GROUND-75-110*(1-(dx/150)*(dx/150)))));}
+  const hw=G.scroll+x0;if(G.nextItemW<hw+300)G.nextItemW=hw+300;
+  while(G.nextItemW<hw+gap-340){addGroup(G.nextItemW-G.scroll);G.nextItemW+=lerp(1500,950,p)+Math.random()*400;}
 }
 function girlY(hz){return GROUND-60+Math.sin(hz.phase*0.8)*6;}
+const isIcon=k=>k==='girl'||k==='concert';
 function doJump(){P.on=false;P.vy=-JV;P.buf=0;SFX.jump();dust(P.x,GROUND,4);if(G.tut)hideTut();}
 function pressJump(){if(mode!=='play'||G.paused)return;if(P.on)doJump();else P.buf=0.13;}
 function collect(x,y){
@@ -788,7 +831,7 @@ function collect(x,y){
 }
 function updatePlay(dt){
   G.t+=dt;G.p=clamp(G.t/PL_REAL,0,1);const p=G.p;
-  G.speed=360+110*p;G.scroll+=G.speed*dt;G.timeLeft=Math.max(0,PL_TOTAL*(1-G.t/PL_REAL));
+  G.speed=370+130*p;G.scroll+=G.speed*dt;G.timeLeft=Math.max(0,PL_TOTAL*(1-G.t/PL_REAL));
   if(P.buf>0)P.buf-=dt;
   if(!P.on){P.vy+=GRAV*dt;P.y+=P.vy*dt;if(P.y>=GROUND){P.y=GROUND;P.vy=0;P.on=true;SFX.land();dust(P.x,GROUND,6);if(P.buf>0)doJump();}}
   else{P.phase+=dt*(13+5*p);const si=Math.floor(P.phase/Math.PI);if(si!==P.stepIdx){P.stepIdx=si;SFX.step();if(Math.random()<0.3)dust(P.x-10,GROUND,1);}}
@@ -796,8 +839,8 @@ function updatePlay(dt){
   if(G.scroll>=G.nextHz)spawnHazard();
   const dx=G.speed*dt;
   for(const it of G.items)it.x-=dx;
-  for(const hz of G.hz){hz.x-=dx+hz.vx*dt;hz.phase+=dt*(hz.kind==='girl'?4:8);if(hz.react>0)hz.react-=dt;
-    if(!hz.spoke&&hz.x<870){hz.spoke=true;playLine(hz.kind);if(hz.kind==='girl')SFX.notify();else SFX.pop();}}
+  for(const hz of G.hz){hz.x-=dx+hz.vx*dt;hz.phase+=dt*(isIcon(hz.kind)?4:8);if(hz.react>0)hz.react-=dt;
+    if(!hz.spoke&&hz.x<870){hz.spoke=true;playLine(hz.kind);if(hz.kind==='girl')SFX.notify();else if(hz.kind==='concert')SFX.riff();else SFX.pop();}}
   updParts(G.parts,dt);updFloaters(dt);updAmbient(dt);
   /* collect first: a book that completes the syllabus wins even on the frame the clock runs out */
   const bx=P.x-22,by=P.y-150,bw=44,bh=146;
@@ -806,9 +849,9 @@ function updatePlay(dt){
   if(G.syl>=100){winRun();return;}
   const hx=P.x-16,hy=P.y-128,hw=32,hh=122;
   for(const hz of G.hz){if(hz.hit||hz.passed)continue;
-    let top=hz.top,bot=hz.bot;if(hz.kind==='girl'){const cy=girlY(hz);top=cy-27;bot=cy+27;}
+    let top=hz.top,bot=hz.bot;if(isIcon(hz.kind)){const cy=girlY(hz);top=cy-27;bot=cy+27;}
     if(hz.x+hz.hw>hx&&hz.x-hz.hw<hx+hw&&bot>hy&&top<hy+hh){hz.hit=true;startEnding(hz);return;}
-    if(hz.x+hz.hw<hx){hz.passed=true;hz.react=1.1;hz.rt=hz.kind==='girl'?'হুহ্!':REACT[Math.random()*REACT.length|0];SFX.whoosh();G.dodged++;floater(P.x+10,P.y-178,DODGE[Math.random()*DODGE.length|0],'#7ee081',22);}}
+    if(hz.x+hz.hw<hx){hz.passed=true;hz.react=1.1;hz.rt=hz.kind==='girl'?'হুহ্!':hz.kind==='concert'?'পরে আফসোস করবি!':REACT[Math.random()*REACT.length|0];SFX.whoosh();G.dodged++;floater(P.x+10,P.y-178,DODGE[Math.random()*DODGE.length|0],'#7ee081',22);}}
   G.items=G.items.filter(it=>it.x>-60);G.hz=G.hz.filter(h=>h.x>-120);
   if(p>0.68){G.hb-=dt;if(G.hb<=0){SFX.heart();G.hb=lerp(0.95,0.5,(p-0.68)/0.32);G.pulse=1;}}
   if(G.pulse>0)G.pulse=Math.max(0,G.pulse-dt*3);
@@ -820,7 +863,7 @@ function endCommon(){jumpBtn.classList.remove('show');jumpBtn.classList.remove('
 function startEnding(hz){
   const k=hz.kind;mode='ending';E={kind:k,t:0,hz,fx0:hz.x,scroll:G.scroll,p:G.p,montStart:2.6,parts:[],trig:{},beat:-1,arrived:0};
   P.y=GROUND;P.on=true;endCommon();G.shake=0.3;
-  if(k==='girl')SFX.notify();else{SFX.hit();if(!speaking)playLine(k);}
+  if(k==='girl')SFX.notify();else if(k==='concert'){SFX.riff();if(!speaking)playLine(k);}else{SFX.hit();if(!speaking)playLine(k);}
 }
 function timeUp(){mode='ending';E={kind:'time',t:0,scroll:G.scroll,p:G.p,montStart:2.0,parts:[],trig:{},beat:-1};P.y=GROUND;P.on=true;G.timeLeft=0;endCommon();G.flash=1;G.shake=0.4;hush();SFX.sting();SFX.alarm();updateHUD(true);}
 function winRun(){mode='ending';E={kind:'win',t:0,scroll:G.scroll,p:G.p,montStart:1.9,parts:[],trig:{},beat:-1};endCommon();best.pct=100;best.win=best.win==null?G.t:Math.min(best.win,G.t);store.set('plEd.best',best);hush();SFX.win();updateHUD(true);}
@@ -835,19 +878,21 @@ function updateEnding(dt){
   E.t+=dt;const T=E.t,k=E.kind;updParts(E.parts,dt);updFloaters(dt);
   if(T<E.montStart){
     if(k==='girl'&&Math.random()<dt*7)E.parts.push({k:'heart',x:P.x+rand(-10,40)+Math.max(0,T-1.45)*240,y:GROUND-150,vx:rand(-20,20),vy:rand(-90,-50),life:1.2,max:1.2,s:rand(12,20)});
+    if(k==='concert'&&Math.random()<dt*8)E.parts.push(noteP(P.x+60+Math.max(0,T-1.45)*240,GROUND-180));
     if(k==='win'&&Math.random()<dt*50)E.parts.push(conf(rand(0,W),-10));
     if(k==='time'&&!E.trig.a2&&T>0.6){E.trig.a2=true;SFX.alarm();}
     return;
   }
   const mt=T-E.montStart;
   if(!E.trig.m){E.trig.m=true;E.parts=[];G.fl=[];hudEl.classList.remove('show');
-    if(k==='bukhari'||k==='mash')ambience(true);else if(k==='girl')setMusic('love');else if(k==='tuition')setMusic('menu');else if(k==='time')SFX.bell();else if(k==='win')setMusic('win');}
+    if(k==='bukhari'||k==='mash')ambience(true);else if(k==='concert'){ambience(true);setMusic('win');}else if(k==='girl')setMusic('love');else if(k==='tuition')setMusic('menu');else if(k==='time')SFX.bell();else if(k==='win')setMusic('win');}
   if(!E.trig.p&&mt>=0.8){E.trig.p=true;showEndPanel();if(k!=='win')SFX.over();}
   const beat=Math.floor(mt/0.45);
-  if(beat!==E.beat){E.beat=beat;if(k==='bukhari'||k==='mash'){SFX.crunch();if(Math.random()<0.4)SFX.clink();}if(k==='mash'&&beat%3===0&&beat>0)SFX.pop();}
+  if(beat!==E.beat){E.beat=beat;if(k==='bukhari'||k==='mash'){SFX.crunch();if(Math.random()<0.4)SFX.clink();}if(k==='mash'&&beat%3===0&&beat>0)SFX.pop();if(k==='concert'&&beat%5===0)SFX.cheer();}
   if(k==='tuition'){const arrived=mt>=1.7?Math.floor((mt-1.7)/0.6)+1:0;if(arrived>E.arrived){E.arrived=arrived;SFX.coin();}}
   if(k==='girl'){[0.3,1.3].forEach((tt,i)=>{if(!E.trig['g'+i]&&mt>=tt){E.trig['g'+i]=true;SFX.notify();}});if(!E.trig.g2&&mt>=2.4){E.trig.g2=true;SFX.pop();}
     if(Math.random()<dt*5)E.parts.push({k:'heart',x:rand(220,300),y:330,vx:rand(-20,20),vy:rand(-80,-40),life:1.6,max:1.6,s:rand(12,22)});}
+  if(k==='concert'&&Math.random()<dt*6)E.parts.push(noteP(rand(60,560),rand(300,420)));
   if(k==='win'&&Math.random()<dt*35)E.parts.push(conf(rand(0,600),-10));
 }
 function leaveEnding(){ambience(false);hush();E=null;}
@@ -918,12 +963,13 @@ function drawIntro(T){
 /* ================= ending & montage drawing ================= */
 function drawHazard(hz,t){
   if(hz.kind==='girl'){drawGirlIcon(hz.x,girlY(hz),30,t);return;}
+  if(hz.kind==='concert'){drawMusicIcon(hz.x,girlY(hz),30,t);return;}
   const L=LOOK[hz.kind];shadow(hz.x);
   drawPerson(Object.assign({},L,{x:hz.x,y:GROUND,s:1,face:-1,gait:'walk',phase:hz.phase,expr:hz.passed?'sad':(hz.spoke?'talk':'happy'),t:t+(L.seed||0)}));
 }
 function drawHazardBubbles(t){
-  for(const hz of G.hz){const top=hz.kind==='girl'?girlY(hz)-38:GROUND-160;
-    if(hz.spoke&&!hz.passed&&!hz.hit&&hz.x>P.x+30)bubble(LINES[hz.kind],hz.x,top,{fill:hz.kind==='girl'?'#ffe3ee':'#ffffff'});
+  for(const hz of G.hz){const top=isIcon(hz.kind)?girlY(hz)-38:GROUND-160;
+    if(hz.spoke&&!hz.passed&&!hz.hit&&hz.x>P.x+30)bubble(LINES[hz.kind],hz.x,top,{fill:hz.kind==='girl'?'#ffe3ee':hz.kind==='concert'?'#efe6ff':'#ffffff'});
     else if(hz.react>0&&hz.rt)bubble(hz.rt,hz.x,top,{size:17});}
 }
 function playerExpr(){if(G.syl>=75)return'hope';return'stress';}
@@ -941,6 +987,10 @@ function drawEndA(T){
     const s=easeBack(clamp(T/0.4,0,1));ctx.save();ctx.translate(W/2,215);ctx.scale(s,s);txt('PL শেষ!',0,-34,70,'#ff3b3b',{stroke:'#ffffff',sw:11});txt('Term Final শুরু!',0,40,46,'#ffffff',{stroke:OUT,sw:8});ctx.restore();return;}
   if(k==='win'){const jy=Math.abs(Math.sin(T*6))*60;shadow(P.x,jy);drawPerson(Object.assign({},LK,{x:P.x,y:GROUND-jy,face:1,gait:jy>6?'jump':'stand',arms:'cheer',expr:'happy',t:T}));return;}
   const walk=Math.max(0,T-1.45),px=P.x+walk*240;
+  if(k==='concert'){const gx=P.x+100+walk*240,gy=GROUND-150+Math.sin(T*5)*6;shadow(px);
+    drawPerson(Object.assign({},LK,{x:px,y:GROUND,s:1,face:1,gait:walk>0?'walk':'stand',arms:walk>0?'walk':'cheer',phase:walk*10,expr:'happy',t:T}));
+    drawMusicIcon(gx,gy,34,T);
+    if(T<1.0)bubble(LINES.concert,gx,gy-42,{fill:'#efe6ff'});else if(T<2.2)bubble(REPLY.concert,px+10,GROUND-165,{fill:'#ffffff'});return;}
   if(k==='girl'){const gx=P.x+100+walk*240,gy=GROUND-150+Math.sin(T*4)*6;shadow(px);
     drawPerson(Object.assign({},LK,{x:px,y:GROUND,s:1,face:1,gait:walk>0?'walk':'stand',arms:'phone',prop:'phone',phase:walk*10,expr:'blush',t:T}));
     drawGirlIcon(gx,gy,34,T);
@@ -1047,7 +1097,7 @@ function drawEnding(){
     const fa=clamp((T-(E.montStart-0.45))/0.45,0,1);if(fa>0){ctx.fillStyle='rgba(10,6,4,'+fa+')';ctx.fillRect(-30,-30,W+60,H+60);}
   }else{
     const mt=T-E.montStart;
-    switch(k){case 'bukhari':sceneBukhari(mt);break;case 'mash':sceneMash(mt);break;case 'tuition':sceneTuition(mt);break;case 'girl':sceneGirl(mt);break;case 'time':sceneTime(mt);break;default:sceneWin(mt);}
+    switch(k){case 'bukhari':sceneBukhari(mt);break;case 'mash':sceneMash(mt);break;case 'tuition':sceneTuition(mt);break;case 'girl':sceneGirl(mt);break;case 'concert':sceneConcert(mt);break;case 'time':sceneTime(mt);break;default:sceneWin(mt);}
     drawParts(E.parts);
     const fi=1-clamp(mt/0.4,0,1);if(fi>0){ctx.fillStyle='rgba(10,6,4,'+fi+')';ctx.fillRect(-30,-30,W+60,H+60);}
   }
